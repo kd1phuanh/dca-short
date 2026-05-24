@@ -1502,69 +1502,135 @@
 <!-- ============= SYNC VIEW ============= -->
 <div class="view" id="view-sync">
   <div class="section-header">
-    <div class="section-title">Đồng Bộ Dữ Liệu</div>
+    <div class="section-title">Đồng Bộ Dữ Liệu (Supabase Realtime)</div>
   </div>
 
   <div class="two-col" style="grid-template-columns: 1fr 1fr;">
     <div class="panel">
-      <div class="panel-title">☁ Google Drive Sync</div>
+      <div class="panel-title">☁ Supabase Cloud Sync</div>
       <p style="font-size:12px; color:var(--text-dim); line-height:1.7; margin-bottom:14px;">
-        Đồng bộ tự động dữ liệu lên Google Drive của bạn. Truy cập từ nhiều thiết bị.
+        Đồng bộ realtime giữa tất cả thiết bị. Sửa trên điện thoại → laptop tự cập nhật trong 1 giây. Miễn phí 500MB.
       </p>
-      <div id="gdrive-not-connected" style="display:block;">
+
+      <div id="sb-not-connected" style="display:block;">
         <div style="background:var(--bg); padding:14px; border:1px solid var(--border); margin-bottom:14px; font-size:11px; line-height:1.7;">
-          <strong>Bước 1:</strong> Bạn cần tạo Google OAuth Client ID 1 lần (~3 phút).<br>
-          <strong>Bước 2:</strong> Nhập Client ID vào ô bên dưới.<br>
-          <strong>Bước 3:</strong> Đăng nhập Google → tự động sync.
+          <strong>Setup nhanh (~5 phút):</strong><br>
+          1. Tạo tài khoản miễn phí tại Supabase<br>
+          2. Tạo project + 1 bảng database<br>
+          3. Copy 2 thông tin: URL + Anon Key<br>
+          4. Paste vào ô bên dưới → Done
         </div>
+
         <details style="margin-bottom:14px; font-size:11px; color:var(--text-dim);">
-          <summary style="cursor:pointer; color:var(--accent); padding:8px 0;">▸ Hướng dẫn tạo Google OAuth Client ID</summary>
-          <ol style="padding:10px 24px; line-height:1.8;">
-            <li>Vào <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:var(--accent)">console.cloud.google.com/apis/credentials</a></li>
-            <li>Tạo Project mới (hoặc chọn project sẵn có)</li>
-            <li>Bật <strong>Google Drive API</strong>: APIs & Services → Library → tìm "Drive" → Enable</li>
-            <li>Tạo OAuth Consent Screen: User Type = External, điền tên app, thêm email bạn vào "Test users"</li>
-            <li>Tạo Credentials → OAuth Client ID → Application type: <strong>Web Application</strong></li>
-            <li>Authorized JavaScript origins: thêm URL nơi bạn host file HTML này (vd <code>https://yourname.github.io</code>) hoặc <code>http://localhost</code> nếu test local</li>
-            <li>Copy <strong>Client ID</strong> → paste vào ô bên dưới</li>
-          </ol>
+          <summary style="cursor:pointer; color:var(--accent); padding:8px 0;">▸ Hướng dẫn chi tiết từng bước</summary>
+          <div style="padding:10px 14px; line-height:1.9; background:var(--bg); border:1px solid var(--border); margin-top:6px;">
+            <strong style="color:var(--accent);">Bước 1: Đăng ký Supabase</strong>
+            <ol style="padding-left:20px; margin:6px 0 14px 0;">
+              <li>Vào <a href="https://supabase.com" target="_blank" style="color:var(--accent)">supabase.com</a> → Start your project</li>
+              <li>Sign up bằng GitHub hoặc email (miễn phí)</li>
+            </ol>
+
+            <strong style="color:var(--accent);">Bước 2: Tạo Project</strong>
+            <ol style="padding-left:20px; margin:6px 0 14px 0;">
+              <li>Nhấn "New Project"</li>
+              <li>Name: <code style="background:var(--bg-elev); padding:1px 5px;">dca-short</code></li>
+              <li>Database Password: nhập 1 chuỗi nào đó, LƯU LẠI ai biết được không quan trọng vì bạn không dùng đến đâu</li>
+              <li>Region: chọn Singapore (gần VN nhất)</li>
+              <li>Pricing Plan: Free → Create new project</li>
+              <li>Đợi 1-2 phút để Supabase setup xong</li>
+            </ol>
+
+            <strong style="color:var(--accent);">Bước 3: Tạo bảng database</strong>
+            <ol style="padding-left:20px; margin:6px 0 14px 0;">
+              <li>Trong project, vào menu trái: <strong>SQL Editor</strong> (icon &lt;/&gt;)</li>
+              <li>Bấm "New Query" → paste đoạn SQL ở dưới → bấm "Run" (Ctrl+Enter)</li>
+            </ol>
+            <button class="btn-ghost btn btn-small" onclick="copyToClipboard(document.getElementById('sb-sql').textContent)" style="margin-bottom:6px;">📋 Copy SQL</button>
+            <pre id="sb-sql" style="background:var(--bg-elev); padding:10px; border:1px solid var(--border); font-size:10px; overflow-x:auto; line-height:1.4; color:var(--text);">-- Tạo bảng lưu trữ
+create table if not exists dca_data (
+  id text primary key default 'main',
+  payload jsonb not null,
+  device_id text,
+  updated_at timestamptz not null default now()
+);
+
+-- Bật Row Level Security với policy mở (vì chỉ dùng cá nhân)
+alter table dca_data enable row level security;
+
+create policy "Allow all with anon key" on dca_data
+  for all using (true) with check (true);
+
+-- Bật Realtime cho bảng này
+alter publication supabase_realtime add table dca_data;</pre>
+
+            <strong style="color:var(--accent);">Bước 4: Lấy URL + Key</strong>
+            <ol style="padding-left:20px; margin:6px 0 14px 0;">
+              <li>Menu trái: <strong>Project Settings</strong> (icon bánh răng) → <strong>API</strong></li>
+              <li>Copy <strong>Project URL</strong> (dạng <code>https://xxx.supabase.co</code>)</li>
+              <li>Copy <strong>anon public</strong> key (chuỗi dài bắt đầu bằng <code>eyJhbGc...</code>)</li>
+              <li>Paste cả 2 vào form bên dưới</li>
+            </ol>
+
+            <div style="background:var(--warn-dim); border-left:3px solid var(--warn); padding:8px 10px; margin-top:10px; font-size:11px;">
+              ⚠ <strong>Lưu ý bảo mật:</strong> Anon key OK để paste vào client app. KHÔNG paste service_role key (key kia rất nguy hiểm nếu lộ).
+            </div>
+          </div>
         </details>
-        <div class="form-group" style="margin-bottom:12px;">
-          <label>Google OAuth Client ID</label>
-          <input type="text" id="gdrive-client-id" placeholder="xxxxxxxxxxxx.apps.googleusercontent.com" style="width:100%; background:var(--bg); border:1px solid var(--border-bright); color:var(--text); font-family:inherit; font-size:12px; padding:9px 11px; outline:none;">
+
+        <div class="form-group" style="margin-bottom:10px;">
+          <label>Supabase Project URL</label>
+          <input type="text" id="sb-url" placeholder="https://xxxxx.supabase.co" style="width:100%; background:var(--bg); border:1px solid var(--border-bright); color:var(--text); font-family:inherit; font-size:11px; padding:9px 11px; outline:none;">
         </div>
-        <button class="btn" onclick="gdriveConnect()" style="width:100%;">⇅ Kết Nối Google Drive</button>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>Anon Public Key</label>
+          <input type="password" id="sb-key" placeholder="eyJhbGc..." style="width:100%; background:var(--bg); border:1px solid var(--border-bright); color:var(--text); font-family:inherit; font-size:11px; padding:9px 11px; outline:none;">
+        </div>
+        <button class="btn" onclick="supabaseConnect()" style="width:100%;">⇅ Kết Nối Supabase</button>
       </div>
-      <div id="gdrive-connected" style="display:none;">
+
+      <div id="sb-connected" style="display:none;">
         <div style="background:var(--accent-dim); border:1px solid var(--accent); padding:12px; margin-bottom:14px; font-size:12px;">
-          <strong style="color:var(--accent)">✓ Đã kết nối</strong><br>
-          Tài khoản: <span id="gdrive-email">--</span><br>
-          File: <code id="gdrive-filename" style="font-size:11px;">dca-short-data.json</code><br>
-          Sync gần nhất: <span id="gdrive-last-sync">--</span>
+          <strong style="color:var(--accent)">✓ Đã kết nối Supabase</strong><br>
+          Project: <code id="sb-project" style="font-size:11px;">--</code><br>
+          Device ID: <code id="sb-device" style="font-size:11px;">--</code><br>
+          Sync gần nhất: <span id="sb-last-sync">--</span><br>
+          Trạng thái: <span id="sb-status">--</span>
         </div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button class="btn" onclick="gdriveUpload()" style="flex:1; min-width:140px;">↑ Upload (lưu lên)</button>
-          <button class="btn-ghost btn" onclick="gdriveDownload()" style="flex:1; min-width:140px;">↓ Download (tải về)</button>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+          <button class="btn" onclick="supabaseUpload(false)" style="flex:1; min-width:130px;">↑ Push lên cloud</button>
+          <button class="btn-ghost btn" onclick="supabaseDownload(false)" style="flex:1; min-width:130px;">↓ Pull về máy</button>
         </div>
-        <div style="margin-top:10px;">
-          <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer;">
-            <input type="checkbox" id="gdrive-autosync" onchange="toggleAutoSync(this.checked)">
-            <span>Auto-sync mỗi khi dữ liệu thay đổi</span>
+
+        <div style="margin-top:10px; padding:12px; background:var(--bg); border:1px solid var(--border);">
+          <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer; margin-bottom:8px;">
+            <input type="checkbox" id="sb-realtime" onchange="toggleRealtime(this.checked)">
+            <strong>Bật Realtime Sync</strong>
           </label>
+          <div style="font-size:11px; color:var(--text-dim); line-height:1.6; padding-left:24px;">
+            Tự động đẩy thay đổi lên cloud + nhận cập nhật từ thiết bị khác trong 1-2 giây.
+          </div>
         </div>
-        <button class="btn-ghost btn btn-small" onclick="gdriveDisconnect()" style="margin-top:14px; width:100%;">⨯ Ngắt kết nối</button>
+
+        <details style="margin-top:14px; font-size:11px; color:var(--text-dim);">
+          <summary style="cursor:pointer; color:var(--text-dim); padding:6px 0;">▸ Tùy chọn nâng cao</summary>
+          <div style="padding:8px 0;">
+            <button class="btn-ghost btn btn-small" onclick="supabaseDisconnect()" style="width:100%; margin-top:6px;">⨯ Ngắt kết nối</button>
+            <button class="btn-ghost btn btn-small" onclick="supabaseReset()" style="width:100%; margin-top:6px;">⨯ Xoá data cloud + ngắt</button>
+          </div>
+        </details>
       </div>
     </div>
 
     <div class="panel">
-      <div class="panel-title">⇣ Export / Import Thủ Công</div>
+      <div class="panel-title">⇣ Export / Import Thủ Công (Backup)</div>
       <p style="font-size:12px; color:var(--text-dim); line-height:1.7; margin-bottom:14px;">
-        Tải file JSON ra máy, hoặc nhập từ file backup. Đơn giản, không cần setup.
+        Tải file JSON ra máy làm backup. Khuyên export định kỳ phòng trường hợp Supabase down.
       </p>
       <button class="btn" onclick="exportData()" style="width:100%; margin-bottom:8px;">↓ Export ra File JSON</button>
       <button class="btn-ghost btn" onclick="document.getElementById('import-file').click()" style="width:100%;">↑ Import từ File JSON</button>
       <div style="margin-top:16px; padding:10px; background:var(--bg); border:1px solid var(--border); font-size:11px; color:var(--text-dim); line-height:1.6;">
-        <strong>Tip:</strong> Bạn có thể upload file JSON này lên Google Drive thủ công, hoặc gửi qua Telegram cho chính mình để có backup.
+        <strong>💡 Tip:</strong> Đăng nhập Supabase trên 4 thiết bị bằng <em>cùng 1 URL + Key</em> → dữ liệu sync tự động giữa cả 4 máy.
       </div>
     </div>
   </div>
@@ -1732,13 +1798,6 @@ let state = {
     provider: 'gemini',
     apiKey: '',
     model: ''
-  },
-  gdrive: {
-    clientId: '',
-    fileId: '',
-    autoSync: false,
-    lastSync: 0,
-    email: ''
   }
 };
 let activeCoinId = null;
@@ -1751,17 +1810,15 @@ function loadState() {
       state.coins = parsed.coins || [];
       state.defaults = { ...state.defaults, ...(parsed.defaults || {}) };
       state.ai = { ...state.ai, ...(parsed.ai || {}) };
-      state.gdrive = { ...state.gdrive, ...(parsed.gdrive || {}) };
     }
   } catch (e) { console.error('Load failed', e); }
 }
 function saveState(skipAutoSync) {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(state));
-    if (!skipAutoSync && autoSyncEnabled && gdriveAccessToken) {
-      // Debounce auto-sync
-      clearTimeout(window._autoSyncTimer);
-      window._autoSyncTimer = setTimeout(() => gdriveUpload(true), 3000);
+    if (!skipAutoSync && !sbApplyingRemote) {
+      // Auto-push lên Supabase nếu đã kết nối
+      if (typeof scheduleCloudSync === 'function') scheduleCloudSync();
     }
   } catch (e) { console.error('Save failed', e); }
 }
@@ -3110,189 +3167,353 @@ async function aiAnalyzeCoin(coinId) {
   }
 }
 
-// ============= GOOGLE DRIVE SYNC =============
-const GDRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
-const GDRIVE_FILENAME = 'dca-short-data.json';
-let gdriveTokenClient = null;
-let gdriveAccessToken = null;
-let gdriveFileId = null;
-let autoSyncEnabled = false;
-let syncTimeout = null;
+// ============= SUPABASE REALTIME SYNC =============
+// Dùng Supabase REST + Realtime WebSocket để sync multi-device
+// Không cần SDK npm, chỉ fetch + WebSocket native
 
-function getGdriveConfig() {
-  return state.gdrive || {};
+const SB_TABLE = 'dca_data';
+const SB_RECORD_ID = 'main';
+const SB_DEBOUNCE_MS = 1200; // Đẩy lên cloud sau 1.2s nếu có thay đổi
+
+let sbConfig = null; // { url, key }
+let sbRealtimeOn = false;
+let sbWebSocket = null;
+let sbPushTimer = null;
+let sbDeviceId = null;
+let sbLastRemoteUpdateAt = null;
+let sbApplyingRemote = false; // Cờ tránh loop khi nhận remote update
+
+function getSbConfig() {
+  // Lưu trong localStorage riêng để không lẫn vào data sync
+  try {
+    return JSON.parse(localStorage.getItem('dca_sb_cfg') || 'null');
+  } catch { return null; }
 }
-function setGdriveConfig(cfg) {
-  state.gdrive = { ...state.gdrive, ...cfg };
-  saveState(true); // skip auto-sync khi update gdrive config
+
+function setSbConfig(cfg) {
+  if (cfg) localStorage.setItem('dca_sb_cfg', JSON.stringify(cfg));
+  else localStorage.removeItem('dca_sb_cfg');
+}
+
+function getDeviceId() {
+  let id = localStorage.getItem('dca_device_id');
+  if (!id) {
+    id = 'dev_' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('dca_device_id', id);
+  }
+  return id;
 }
 
 function renderSyncView() {
-  const cfg = getGdriveConfig();
-  if (cfg.clientId) {
-    document.getElementById('gdrive-client-id').value = cfg.clientId;
-  }
-  if (gdriveAccessToken) {
-    document.getElementById('gdrive-not-connected').style.display = 'none';
-    document.getElementById('gdrive-connected').style.display = 'block';
-    document.getElementById('gdrive-email').textContent = cfg.email || 'Đã đăng nhập';
-    document.getElementById('gdrive-last-sync').textContent = cfg.lastSync ? new Date(cfg.lastSync).toLocaleString('vi-VN') : 'chưa sync';
-    document.getElementById('gdrive-autosync').checked = !!cfg.autoSync;
-    autoSyncEnabled = !!cfg.autoSync;
+  const cfg = getSbConfig();
+  sbDeviceId = getDeviceId();
+
+  if (cfg && cfg.url && cfg.key) {
+    document.getElementById('sb-not-connected').style.display = 'none';
+    document.getElementById('sb-connected').style.display = 'block';
+    document.getElementById('sb-project').textContent = cfg.url.replace(/^https?:\/\//, '').replace(/\.supabase\.co.*$/, '.supabase.co');
+    document.getElementById('sb-device').textContent = sbDeviceId;
+    document.getElementById('sb-last-sync').textContent = cfg.lastSync ? new Date(cfg.lastSync).toLocaleString('vi-VN') : 'chưa sync';
+    document.getElementById('sb-realtime').checked = !!cfg.realtimeOn;
+    document.getElementById('sb-status').innerHTML = sbRealtimeOn
+      ? '<span style="color:var(--accent);">● Realtime đang chạy</span>'
+      : '<span style="color:var(--text-dim);">○ Chỉ sync khi push/pull tay</span>';
+    sbConfig = cfg;
   } else {
-    document.getElementById('gdrive-not-connected').style.display = 'block';
-    document.getElementById('gdrive-connected').style.display = 'none';
+    document.getElementById('sb-not-connected').style.display = 'block';
+    document.getElementById('sb-connected').style.display = 'none';
   }
 }
 
-async function loadGisLibrary() {
-  if (window.google && window.google.accounts) return;
-  await new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = 'https://accounts.google.com/gsi/client';
-    s.onload = res;
-    s.onerror = () => rej(new Error('Không load được Google Identity Services'));
-    document.head.appendChild(s);
-  });
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => showToast('✓ Đã copy SQL vào clipboard'));
 }
 
-async function gdriveConnect() {
-  const clientId = document.getElementById('gdrive-client-id').value.trim();
-  if (!clientId) { alert('Cần nhập Client ID'); return; }
+async function supabaseConnect() {
+  const url = document.getElementById('sb-url').value.trim().replace(/\/+$/, '');
+  const key = document.getElementById('sb-key').value.trim();
+  if (!url || !key) { alert('Cần cả URL và Anon Key'); return; }
+  if (!url.startsWith('https://') || !url.includes('.supabase.co')) {
+    alert('URL không hợp lệ. Phải là dạng https://xxx.supabase.co');
+    return;
+  }
+  if (!key.startsWith('eyJ')) {
+    alert('Anon key không hợp lệ. Key đúng bắt đầu bằng eyJ...');
+    return;
+  }
+
+  showToast('Đang kết nối Supabase...');
+  // Test connection bằng cách GET 1 row
   try {
-    await loadGisLibrary();
-    gdriveTokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: clientId,
-      scope: GDRIVE_SCOPES,
-      callback: async (resp) => {
-        if (resp.error) { alert('Lỗi đăng nhập: ' + resp.error); return; }
-        gdriveAccessToken = resp.access_token;
-        const cfg = getGdriveConfig();
-        cfg.clientId = clientId;
-        cfg.connected = true;
-        setGdriveConfig(cfg);
-        // Find or create file
-        await gdriveFindFile();
-        // Try download existing
-        if (gdriveFileId) {
-          if (confirm('Đã tìm thấy file backup trên Drive. Tải về và ghi đè dữ liệu local?')) {
-            await gdriveDownload();
-          }
-        }
-        renderSyncView();
-        alert('Kết nối Google Drive thành công!');
-      }
+    const res = await fetch(`${url}/rest/v1/${SB_TABLE}?id=eq.${SB_RECORD_ID}&select=*`, {
+      headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
     });
-    gdriveTokenClient.requestAccessToken();
+    if (!res.ok) {
+      const errText = await res.text();
+      if (res.status === 404 || errText.includes('relation') || errText.includes('does not exist')) {
+        alert('❌ Chưa tạo bảng "dca_data".\n\nVào Supabase → SQL Editor → chạy đoạn SQL trong hướng dẫn.');
+        return;
+      }
+      throw new Error(`HTTP ${res.status}: ${errText.slice(0, 200)}`);
+    }
+
+    const existing = await res.json();
+    sbConfig = { url, key, connectedAt: Date.now(), lastSync: null };
+    setSbConfig(sbConfig);
+
+    if (existing && existing.length > 0 && existing[0].payload) {
+      // Đã có data trên cloud
+      const remoteUpdated = new Date(existing[0].updated_at).getTime();
+      const localCoinCount = state.coins.length;
+      const remoteCoinCount = (existing[0].payload.coins || []).length;
+      const useRemote = confirm(
+        `📥 Tìm thấy dữ liệu trên cloud (cập nhật ${new Date(remoteUpdated).toLocaleString('vi-VN')}, ${remoteCoinCount} coin).\n\n` +
+        `Local có ${localCoinCount} coin.\n\n` +
+        `OK = Tải về (ghi đè local)\nCancel = Đẩy local lên (ghi đè cloud)`
+      );
+      if (useRemote) {
+        await supabaseDownload(true);
+      } else {
+        await supabaseUpload(true);
+      }
+    } else {
+      // Chưa có data cloud, push local lên
+      await supabaseUpload(true);
+    }
+
+    renderSyncView();
+    showToast('✓ Đã kết nối Supabase');
+
+    // Hỏi có muốn bật realtime ngay không
+    if (confirm('Bật Realtime Sync ngay để đồng bộ tự động giữa các thiết bị?')) {
+      document.getElementById('sb-realtime').checked = true;
+      toggleRealtime(true);
+    }
+  } catch (e) {
+    alert('❌ Lỗi kết nối: ' + e.message);
+  }
+}
+
+async function supabaseUpload(silent) {
+  if (!sbConfig) { if (!silent) alert('Chưa kết nối'); return; }
+  const payload = {
+    id: SB_RECORD_ID,
+    payload: state,
+    device_id: getDeviceId(),
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    // Upsert (insert or update)
+    const res = await fetch(`${sbConfig.url}/rest/v1/${SB_TABLE}?on_conflict=id`, {
+      method: 'POST',
+      headers: {
+        'apikey': sbConfig.key,
+        'Authorization': `Bearer ${sbConfig.key}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(`HTTP ${res.status}: ${t.slice(0, 200)}`);
+    }
+    sbConfig.lastSync = Date.now();
+    setSbConfig(sbConfig);
+    const el = document.getElementById('sb-last-sync');
+    if (el) el.textContent = new Date().toLocaleString('vi-VN');
+    if (!silent) showToast('✓ Đã đẩy lên cloud');
+  } catch (e) {
+    if (!silent) alert('❌ Lỗi upload: ' + e.message);
+    console.error('Supabase upload failed:', e);
+  }
+}
+
+async function supabaseDownload(silent) {
+  if (!sbConfig) { if (!silent) alert('Chưa kết nối'); return; }
+  try {
+    const res = await fetch(`${sbConfig.url}/rest/v1/${SB_TABLE}?id=eq.${SB_RECORD_ID}&select=*`, {
+      headers: { 'apikey': sbConfig.key, 'Authorization': `Bearer ${sbConfig.key}` }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    if (!rows || rows.length === 0) {
+      if (!silent) alert('Cloud chưa có dữ liệu');
+      return;
+    }
+    const remote = rows[0];
+    if (remote.payload && remote.payload.coins !== undefined) {
+      if (!silent && !confirm(`Tải dữ liệu từ cloud (${(remote.payload.coins || []).length} coin)? Sẽ ghi đè local hiện tại.`)) return;
+
+      sbApplyingRemote = true;
+      state = remote.payload;
+      // Preserve local-only configs (auto-refresh setting, etc - state đã có sẵn)
+      saveState(true); // skip cloud push
+      sbApplyingRemote = false;
+
+      sbLastRemoteUpdateAt = remote.updated_at;
+      sbConfig.lastSync = Date.now();
+      setSbConfig(sbConfig);
+
+      renderPortfolio();
+      if (!silent) showToast('✓ Đã tải về từ cloud');
+    }
+  } catch (e) {
+    if (!silent) alert('❌ Lỗi download: ' + e.message);
+  }
+}
+
+function supabaseDisconnect() {
+  if (!confirm('Ngắt kết nối Supabase? Dữ liệu local vẫn giữ.')) return;
+  stopRealtime();
+  sbConfig = null;
+  setSbConfig(null);
+  renderSyncView();
+  showToast('Đã ngắt kết nối');
+}
+
+async function supabaseReset() {
+  if (!sbConfig) return;
+  if (!confirm('⚠ XOÁ TOÀN BỘ DATA TRÊN CLOUD?\n\nLocal sẽ giữ nguyên. Bạn vẫn có thể push lại sau.')) return;
+  try {
+    await fetch(`${sbConfig.url}/rest/v1/${SB_TABLE}?id=eq.${SB_RECORD_ID}`, {
+      method: 'DELETE',
+      headers: { 'apikey': sbConfig.key, 'Authorization': `Bearer ${sbConfig.key}` }
+    });
+    showToast('Đã xoá data cloud');
+    supabaseDisconnect();
   } catch (e) {
     alert('Lỗi: ' + e.message);
   }
 }
 
-async function gdriveFindFile() {
-  const q = encodeURIComponent(`name='${GDRIVE_FILENAME}' and trashed=false`);
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive`, {
-    headers: { Authorization: `Bearer ${gdriveAccessToken}` }
-  });
-  if (!res.ok) throw new Error('Không tìm được file');
-  const data = await res.json();
-  gdriveFileId = data.files && data.files.length > 0 ? data.files[0].id : null;
-  return gdriveFileId;
-}
-
-async function gdriveUpload(silent) {
-  if (!gdriveAccessToken) { if (!silent) alert('Chưa kết nối'); return; }
-  const content = JSON.stringify(state, null, 2);
-  try {
-    if (!gdriveFileId) {
-      // Create new
-      const metadata = { name: GDRIVE_FILENAME, mimeType: 'application/json' };
-      const boundary = 'boundary' + Date.now();
-      const body = `--${boundary}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${content}\r\n--${boundary}--`;
-      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${gdriveAccessToken}`,
-          'Content-Type': `multipart/related; boundary=${boundary}`
-        },
-        body
-      });
-      if (!res.ok) throw new Error('Upload thất bại: ' + res.status);
-      const data = await res.json();
-      gdriveFileId = data.id;
-    } else {
-      // Update existing
-      const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${gdriveFileId}?uploadType=media`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${gdriveAccessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: content
-      });
-      if (!res.ok) throw new Error('Update thất bại: ' + res.status);
-    }
-    const cfg = getGdriveConfig();
-    cfg.lastSync = Date.now();
-    setGdriveConfig(cfg);
-    const lastSyncEl = document.getElementById('gdrive-last-sync');
-    if (lastSyncEl) lastSyncEl.textContent = new Date().toLocaleString('vi-VN');
-    if (!silent) showToast('✓ Đã sync lên Google Drive');
-  } catch (e) {
-    if (e.message.includes('401')) {
-      gdriveAccessToken = null;
-      if (!silent) alert('Phiên đăng nhập hết hạn, vui lòng kết nối lại');
-      renderSyncView();
-    } else {
-      if (!silent) alert('Lỗi upload: ' + e.message);
-    }
-  }
-}
-
-async function gdriveDownload() {
-  if (!gdriveAccessToken) { alert('Chưa kết nối'); return; }
-  try {
-    if (!gdriveFileId) await gdriveFindFile();
-    if (!gdriveFileId) { alert('Chưa có file backup trên Drive'); return; }
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${gdriveFileId}?alt=media`, {
-      headers: { Authorization: `Bearer ${gdriveAccessToken}` }
-    });
-    if (!res.ok) throw new Error('Download thất bại: ' + res.status);
-    const data = await res.json();
-    if (data && data.coins) {
-      state = data;
-      saveState();
-      renderPortfolio();
-      showToast('✓ Đã tải dữ liệu từ Google Drive');
-    }
-  } catch (e) {
-    alert('Lỗi download: ' + e.message);
-  }
-}
-
-function gdriveDisconnect() {
-  gdriveAccessToken = null;
-  gdriveFileId = null;
-  const cfg = getGdriveConfig();
-  cfg.connected = false;
-  cfg.autoSync = false;
-  setGdriveConfig(cfg);
-  autoSyncEnabled = false;
+// ===== REALTIME WEBSOCKET =====
+function toggleRealtime(on) {
+  if (!sbConfig) return;
+  sbConfig.realtimeOn = on;
+  setSbConfig(sbConfig);
+  if (on) startRealtime();
+  else stopRealtime();
   renderSyncView();
 }
 
-function toggleAutoSync(on) {
-  autoSyncEnabled = on;
-  const cfg = getGdriveConfig();
-  cfg.autoSync = on;
-  setGdriveConfig(cfg);
-  if (on) scheduleCloudSync();
+function startRealtime() {
+  if (!sbConfig) return;
+  stopRealtime();
+
+  // Lấy hostname từ URL, mở WebSocket Realtime của Supabase
+  const wsUrl = sbConfig.url.replace(/^https?:\/\//, 'wss://') + '/realtime/v1/websocket?apikey=' + encodeURIComponent(sbConfig.key) + '&vsn=1.0.0';
+  try {
+    sbWebSocket = new WebSocket(wsUrl);
+  } catch (e) {
+    console.error('Không tạo được WebSocket:', e);
+    return;
+  }
+
+  sbWebSocket.addEventListener('open', () => {
+    console.log('[Supabase RT] WebSocket mở');
+    sbRealtimeOn = true;
+    // Subscribe channel cho bảng dca_data
+    const subscribeMsg = {
+      topic: `realtime:public:${SB_TABLE}`,
+      event: 'phx_join',
+      payload: {
+        config: {
+          postgres_changes: [
+            { event: '*', schema: 'public', table: SB_TABLE }
+          ]
+        }
+      },
+      ref: '1'
+    };
+    sbWebSocket.send(JSON.stringify(subscribeMsg));
+    renderSyncView();
+    showToast('● Realtime sync ĐANG CHẠY');
+  });
+
+  sbWebSocket.addEventListener('message', (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.event === 'postgres_changes') {
+        const data = msg.payload && msg.payload.data;
+        if (!data) return;
+        const newRecord = data.record;
+        if (!newRecord || newRecord.id !== SB_RECORD_ID) return;
+        // Bỏ qua nếu chính device này vừa update
+        if (newRecord.device_id === sbDeviceId) {
+          console.log('[Supabase RT] Bỏ qua update của chính mình');
+          return;
+        }
+        // Bỏ qua nếu remote update cũ hơn lần cuối ta nhận
+        const remoteTime = new Date(newRecord.updated_at).getTime();
+        if (sbLastRemoteUpdateAt && remoteTime <= new Date(sbLastRemoteUpdateAt).getTime()) return;
+
+        sbLastRemoteUpdateAt = newRecord.updated_at;
+
+        if (newRecord.payload && newRecord.payload.coins !== undefined) {
+          sbApplyingRemote = true;
+          state = newRecord.payload;
+          saveState(true); // không trigger push lên cloud
+          sbApplyingRemote = false;
+          // Re-render whatever active
+          const activeView = document.querySelector('.view.active');
+          if (activeView) {
+            if (activeView.id === 'view-portfolio') renderPortfolio();
+            else if (activeView.id === 'view-detail') renderDetail();
+            else if (activeView.id === 'view-report') renderReport();
+            else if (activeView.id === 'view-sync') renderSyncView();
+          }
+          showToast('↓ Đồng bộ từ thiết bị khác');
+        }
+      } else if (msg.event === 'phx_reply' && msg.payload && msg.payload.status === 'ok') {
+        console.log('[Supabase RT] Subscribe OK');
+      } else if (msg.event === 'phx_error') {
+        console.error('[Supabase RT] Subscribe error', msg);
+      }
+    } catch (e) {
+      console.error('[Supabase RT] Parse error:', e);
+    }
+  });
+
+  sbWebSocket.addEventListener('close', () => {
+    console.log('[Supabase RT] WebSocket đóng');
+    sbRealtimeOn = false;
+    // Reconnect sau 5s nếu vẫn enabled
+    if (sbConfig && sbConfig.realtimeOn) {
+      setTimeout(() => {
+        if (sbConfig && sbConfig.realtimeOn) startRealtime();
+      }, 5000);
+    }
+  });
+
+  sbWebSocket.addEventListener('error', (e) => {
+    console.error('[Supabase RT] WS error:', e);
+  });
+
+  // Heartbeat để giữ kết nối
+  if (window._sbHeartbeat) clearInterval(window._sbHeartbeat);
+  window._sbHeartbeat = setInterval(() => {
+    if (sbWebSocket && sbWebSocket.readyState === WebSocket.OPEN) {
+      sbWebSocket.send(JSON.stringify({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: 'hb' + Date.now() }));
+    }
+  }, 30000);
 }
 
+function stopRealtime() {
+  if (window._sbHeartbeat) { clearInterval(window._sbHeartbeat); window._sbHeartbeat = null; }
+  if (sbWebSocket) {
+    try { sbWebSocket.close(); } catch (e) {}
+    sbWebSocket = null;
+  }
+  sbRealtimeOn = false;
+}
+
+// Hook: gọi push khi state thay đổi (debounce)
 function scheduleCloudSync() {
-  if (!autoSyncEnabled || !gdriveAccessToken) return;
-  if (syncTimeout) clearTimeout(syncTimeout);
-  syncTimeout = setTimeout(() => gdriveUpload(), 3000); // debounce 3s
+  if (!sbConfig || sbApplyingRemote) return;
+  if (sbPushTimer) clearTimeout(sbPushTimer);
+  sbPushTimer = setTimeout(() => supabaseUpload(true), SB_DEBOUNCE_MS);
 }
 
 function showToast(msg) {
@@ -3339,8 +3560,6 @@ document.getElementById('filter-coin').addEventListener('input', renderPortfolio
 
 // ============= INIT =============
 loadState();
-// Load auto-sync flag from state
-autoSyncEnabled = !!(state.gdrive && state.gdrive.autoSync);
 // Seed demo data if empty (first time only)
 if (state.coins.length === 0 && !localStorage.getItem(LS_KEY)) {
   state.coins = [{
@@ -3360,6 +3579,24 @@ if (state.coins.length === 0 && !localStorage.getItem(LS_KEY)) {
 }
 document.getElementById('ts').textContent = new Date().toISOString().slice(0, 10);
 renderPortfolio();
+
+// Khởi động Supabase nếu đã kết nối trước đó
+(function initSupabase() {
+  const cfg = getSbConfig();
+  if (cfg && cfg.url && cfg.key) {
+    sbConfig = cfg;
+    sbDeviceId = getDeviceId();
+    if (cfg.realtimeOn) {
+      // Kéo data mới nhất trước, sau đó bật realtime
+      supabaseDownload(true).then(() => {
+        startRealtime();
+      }).catch(() => {
+        // Vẫn bật realtime kể cả khi download fail
+        startRealtime();
+      });
+    }
+  }
+})();
 
 // Khởi động auto-refresh nếu đã bật trước đó
 if (isAutoRefreshOn()) {
